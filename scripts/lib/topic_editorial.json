@@ -1,0 +1,90 @@
+{
+  "arrays": {
+    "summary": "Foundation of DSA. Master traversal, prefix sums, two pointers, and hashing-based lookups before moving on.",
+    "core_patterns": ["two-pointers", "prefix-sum", "hashing", "kadane", "sliding-window"]
+  },
+  "strings": {
+    "summary": "String manipulation, anagram detection, substring problems, and sliding window on character arrays.",
+    "core_patterns": ["sliding-window", "two-pointers", "frequency-map", "palindrome-check"]
+  },
+  "hashing": {
+    "summary": "O(1) average lookup with hash maps and sets. Used in counting, grouping, and existence queries.",
+    "core_patterns": ["frequency-map", "grouping", "two-sum-pattern", "rolling-hash"]
+  },
+  "two-pointers": {
+    "summary": "Opposite-end and same-direction pointer techniques on sorted arrays and linked lists.",
+    "core_patterns": ["opposite-ends", "slow-fast-pointers", "partition"]
+  },
+  "sliding-window": {
+    "summary": "Maintain a window of elements with O(n) complexity. Fixed-size and variable-size variants.",
+    "core_patterns": ["fixed-window", "variable-window", "max-window", "min-window"]
+  },
+  "prefix-sum": {
+    "summary": "Precompute cumulative sums to answer range queries in O(1). Extends to 2D and difference arrays.",
+    "core_patterns": ["prefix-sum", "range-sum", "difference-array", "2d-prefix"]
+  },
+  "binary-search": {
+    "summary": "Halve the search space every step. Classic sorted-array search plus search-on-answer for optimization problems.",
+    "core_patterns": ["classic-bs", "search-on-answer", "rotated-array", "first-last-occurrence"]
+  },
+  "linked-list": {
+    "summary": "Pointer manipulation without random access. Fast/slow pointer detects cycles; reversal is a core technique.",
+    "core_patterns": ["fast-slow-pointers", "reversal", "dummy-head", "in-place-merge"]
+  },
+  "stacks-queues": {
+    "summary": "LIFO/FIFO structures. Monotonic stack solves next-greater-element; deque enables O(n) sliding-window max.",
+    "core_patterns": ["monotonic-stack", "monotonic-deque", "next-greater", "valid-parentheses"]
+  },
+  "recursion": {
+    "summary": "Express a problem in terms of smaller subproblems. Base case + recurrence. Merge sort is the archetype.",
+    "core_patterns": ["divide-conquer", "merge-sort", "quick-sort", "tail-recursion"]
+  },
+  "backtracking": {
+    "summary": "Pruned exhaustive search. Choose–Explore–Unchoose. Used for permutations, combinations, and constraint satisfaction.",
+    "core_patterns": ["choose-explore-unchoose", "pruning", "permutations", "subsets", "sudoku"]
+  },
+  "trees": {
+    "summary": "Recursive structure. DFS (pre/in/post order) and BFS (level order). Path problems and LCA are essential.",
+    "core_patterns": ["tree-dfs", "tree-bfs", "path-sum", "lca", "diameter"]
+  },
+  "bst": {
+    "summary": "In-order traversal of a BST yields sorted sequence. Master insert, delete, validate, and kth-smallest.",
+    "core_patterns": ["bst-insert", "bst-delete", "bst-validate", "in-order", "kth-smallest"]
+  },
+  "heap": {
+    "summary": "Efficient min/max extraction. Used for top-K elements, k-way merge, and scheduling.",
+    "core_patterns": ["min-heap", "max-heap", "top-k", "k-way-merge", "median-stream"]
+  },
+  "greedy": {
+    "summary": "Make the locally optimal choice at each step. Prove correctness with exchange argument or counterexample.",
+    "core_patterns": ["interval-scheduling", "activity-selection", "huffman", "exchange-argument"]
+  },
+  "dynamic-programming": {
+    "summary": "Overlapping subproblems + optimal substructure. Top-down (memoization) or bottom-up (tabulation).",
+    "core_patterns": ["1d-dp", "2d-dp", "knapsack", "lcs", "lis", "coin-change", "interval-dp", "bitmask-dp"]
+  },
+  "graphs": {
+    "summary": "BFS/DFS on general graphs. Topological sort for DAGs, Dijkstra for SSSP, Union-Find for connectivity.",
+    "core_patterns": ["bfs", "dfs", "topo-sort", "dijkstra", "bellman-ford", "union-find", "cycle-detection", "bipartite"]
+  },
+  "tries": {
+    "summary": "Prefix tree for efficient string prefix queries. Powers autocomplete, word search, and XOR tricks.",
+    "core_patterns": ["trie-insert", "trie-search", "prefix-query", "xor-trie"]
+  },
+  "segment-trees": {
+    "summary": "Answer range queries with point/range updates in O(log n). Fenwick tree is lighter for prefix-sum updates.",
+    "core_patterns": ["segment-tree-build", "range-query", "range-update", "fenwick-tree", "lazy-propagation"]
+  },
+  "bit-manipulation": {
+    "summary": "XOR tricks for pairs/duplicates, bit masking for subsets, power-of-two checks.",
+    "core_patterns": ["xor-tricks", "bit-mask", "bit-counting", "subset-enumeration", "power-of-two"]
+  },
+  "math": {
+    "summary": "GCD/LCM, prime sieve, modular arithmetic, combinatorics (nCr mod p). Often combined with DP.",
+    "core_patterns": ["gcd-lcm", "sieve-of-eratosthenes", "modular-exp", "combinatorics", "pigeonhole"]
+  },
+  "string-algorithms": {
+    "summary": "KMP for O(n) pattern matching, Rabin-Karp for rolling hash, Z-function for prefix matches.",
+    "core_patterns": ["kmp", "rabin-karp", "z-function", "manacher", "string-hashing", "suffix-array"]
+  }
+}
