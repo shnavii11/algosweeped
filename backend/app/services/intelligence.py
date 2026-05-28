@@ -1,5 +1,6 @@
 """Topic weakness score + interview readiness score computation."""
 import math
+from typing import Optional
 
 TOPIC_WEIGHTS = {
     "dynamic-programming": 1.4,
@@ -13,6 +14,69 @@ TOPIC_WEIGHTS = {
 }
 
 CORE_TOPICS = ["dynamic-programming", "graphs", "trees", "binary-search", "arrays", "strings"]
+
+# Inline mirror of scripts/lib/lc_topic_map.json — keeps the backend self-contained
+# for deploy (LeetCode raw tag-slugs → canonical 22-topic taxonomy).
+LC_TAG_TO_TOPIC = {
+    "array": "arrays",
+    "string": "strings",
+    "hash-table": "hashing",
+    "hash-map": "hashing",
+    "two-pointers": "two-pointers",
+    "sliding-window": "sliding-window",
+    "prefix-sum": "prefix-sum",
+    "binary-search": "binary-search",
+    "linked-list": "linked-list",
+    "stack": "stacks-queues",
+    "queue": "stacks-queues",
+    "monotonic-stack": "stacks-queues",
+    "monotonic-queue": "stacks-queues",
+    "recursion": "recursion",
+    "divide-and-conquer": "recursion",
+    "backtracking": "backtracking",
+    "tree": "trees",
+    "binary-tree": "trees",
+    "depth-first-search": "trees",
+    "breadth-first-search": "trees",
+    "binary-search-tree": "bst",
+    "heap-priority-queue": "heap",
+    "greedy": "greedy",
+    "dynamic-programming": "dynamic-programming",
+    "memoization": "dynamic-programming",
+    "graph": "graphs",
+    "topological-sort": "graphs",
+    "union-find": "graphs",
+    "shortest-path": "graphs",
+    "trie": "tries",
+    "segment-tree": "segment-trees",
+    "binary-indexed-tree": "segment-trees",
+    "bit-manipulation": "bit-manipulation",
+    "math": "math",
+    "number-theory": "math",
+    "combinatorics": "math",
+    "string-matching": "string-algorithms",
+    "suffix-array": "string-algorithms",
+    "sorting": "arrays",
+    "matrix": "arrays",
+    "simulation": "arrays",
+    "counting": "math",
+    "enumeration": "arrays",
+    "geometry": "math",
+    "game-theory": "dynamic-programming",
+    "interactive": "arrays",
+    "brainteaser": "math",
+    "design": "stacks-queues",
+    "iterator": "stacks-queues",
+    "ordered-set": "bst",
+    "randomized": "math",
+    "rolling-hash": "hashing",
+    "hash-function": "hashing",
+}
+
+
+def normalize_lc_topic(raw: str) -> Optional[str]:
+    """Map a raw LeetCode tag-slug to a canonical topic, or None if unmapped."""
+    return LC_TAG_TO_TOPIC.get(raw)
 
 
 def compute_weakness_score(topic: str, solved: int, attempted: int) -> float:

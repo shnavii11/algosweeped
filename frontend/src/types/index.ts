@@ -71,6 +71,13 @@ export interface SheetProblem {
   is_premium?: boolean
 }
 
+export interface SheetProgressMe {
+  progress_map: Record<string, 'todo' | 'attempted' | 'done'>
+  done: number
+  total: number
+  pct: number
+}
+
 export interface SheetSource {
   id: string
   name: string

@@ -18,7 +18,12 @@ export default function QuestionRow({ question, status = 'todo', onStatusChange 
   const cycleStatus = async () => {
     const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(localStatus) + 1) % STATUS_CYCLE.length]
     setLocalStatus(next)
-    onStatusChange?.(question.id, next)
+    // When a parent owns persistence (e.g. the curated Sheet page writes to
+    // sheet_progress), delegate to it and skip the question_progress write.
+    if (onStatusChange) {
+      onStatusChange(question.id, next)
+      return
+    }
     try {
       await updateQuestionProgress(question.id, next)
     } catch {

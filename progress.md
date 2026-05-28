@@ -63,3 +63,30 @@ Append-only. Each entry records one discrete step.
 - Sheet-page progress toggle writes to `question_progress` (via `updateQuestionProgress`), not `sheet_progress`; the sheet-specific endpoint remains unused by the UI.
 
 **Next:** User-driven OAuth round-trip + browser page walk-through; thicken curated sheet; exercise LLM.
+
+---
+
+## 2026-05-28 — Intelligence-layer correctness + curated-sheet tracking (Step 3)
+
+**Did (option 1 of the agreed 1→2→3 backlog):**
+- **Step 0:** Killed the leftover duplicate vite on :5174 (PID 27156); :5173 + :8000 backend left running.
+- **Bug 1 — LC tag-slugs → canonical topics.** `backend/app/services/intelligence.py`: added `LC_TAG_TO_TOPIC` (inline mirror of `scripts/lib/lc_topic_map.json`, keeps backend deploy self-contained) + `normalize_lc_topic(raw) -> Optional[str]`. `backend/app/routers/stats.py` (`_do_sync`): now aggregates `problemsSolved` by **canonical** topic (skips unmapped slugs), `DELETE FROM topic_scores WHERE user_id=:uid` once, then inserts one fresh row per canonical topic with `compute_weakness_score(canon, solved, solved)`.
+- **Bug 2 — readiness `topic_coverage`.** Fixed transitively by Bug 1; `compute_readiness_score` unchanged (already matches `CORE_TOPICS` once topics are canonical).
+- **Bug 3 — curated-sheet progress.** `frontend/src/types/index.ts`: added `SheetProgressMe`. `api/sheet.ts`: typed `getMySheetProgress`. `QuestionRow.tsx`: when `onStatusChange` is provided, delegate persistence to parent and skip the `question_progress` write (Questions page unchanged). `TopicAccordion.tsx`: forwards optional `onStatusChange`. `Sheet.tsx`: hydrates via `useQuery(['sheet-progress'], getMySheetProgress)`, keeps a local `overrides` map for optimism (`progress = {...progress_map, ...overrides}`), `useMutation` → `updateSheetProgress`, passes `onStatusChange` down; header count + bars now driven off `progress`. Removed dead `setProgress`.
+
+**Result: Working — verified against live backend (user `shnavii11`).**
+- `POST /stats/sync` → `GET /stats/me`: topic_scores went from **39 raw-slug rows** (`array`, `binary-tree`, `data-stream`, `brainteaser`, `line-sweep`…) to **19 canonical rows** (`arrays`=174, `trees`=116, `strings`=52…); no raw slugs remain.
+- `GET /roadmap`: `weakness_score` now populated for `arrays`/`strings`/`hashing` (were `None`) + binary-search/trees/dp/graphs. (`prefix-sum` stays `None` — user simply has no solves mapped there; correct, not a bug.)
+- `GET /stats/shnavii11/readiness`: `topic_coverage` **33.3 → 100.0**, total **53.0 → 73.0** (all 6 CORE_TOPICS now score > 0.5).
+- Sheet round-trip: `PATCH /sheet/progress/lc-121?status=done` → `GET /sheet/progress/me` shows `done:1`. The Sheet page reads `/sheet/progress/me`, so the tracker updates immediately.
+- Frontend `npm run build` (tsc + vite) type-clean.
+
+**Note (caught during verification):** backend runs on **Python 3.9.6** (CommandLineTools), not 3.11/3.14 — PEP 604 `str | None` annotations fail at import. Used `Optional[str]` (matches existing `app/cache.py`, `app/services/llm.py` style).
+
+**Known gaps:**
+- `/stats/me` `sheet` block is Redis-cached (1h) and the sheet PATCH endpoint doesn't bust `stats:{user_id}`, so the **Dashboard** sheet number lags until cache expiry / next sync. Pre-existing pattern (`question_progress` PATCH is the same); `sheet.py` is outside Step 3's declared change surface, so left untouched — flagged for a decision.
+- `compute_weakness_score` is called with `attempted = solved`, so its accuracy term is always 1.0 → the score is effectively a weighted volume metric (acceptable for now).
+- Browser/visual walk-through is user-driven (not run headlessly).
+- Left `lc-121` marked `done` on `shnavii11` as a verification artifact — untoggle in the UI if undesired.
+
+**Next (agreed backlog):** Option 2 — wire the Gemini LLM (now fed correct `weak_topics`); then Option 3 — thicken the curated sheet 250 → 350–450 via sheet loaders.

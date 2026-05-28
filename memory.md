@@ -35,3 +35,19 @@ Append-only. Each entry records a concrete change to the codebase.
   - `stats/questions/sheet` api: typed `getReadiness`; `getQuestions`→`Question[]`; `updateSheetProgress` sends `status` as query param.
   - persist key `icode-auth`→`algosweeped-auth`; `VITE_GITHUB_CLIENT_ID` filled (inert — frontend uses no `import.meta.env`).
 - **Reason:** Backend wraps most responses in an envelope while `api/*.ts` typed the inner shape, so components received the whole envelope; `/questions/by-topic` and `/sheet/curated` also omit/flatten fields the `Question` type assumed. Reconciled against live Supabase responses; `npm run build` type-clean.
+
+---
+
+## 2026-05-28 — Step 3: canonical topic normalization + curated-sheet progress wiring
+
+- **Scope:** `backend/app/services/intelligence.py`, `backend/app/routers/stats.py`, `frontend/src/types/index.ts`, `frontend/src/api/sheet.ts`, `frontend/src/components/questions/{QuestionRow,TopicAccordion}.tsx`, `frontend/src/pages/Sheet.tsx`
+- **Changes:**
+  - `intelligence.py`: added `LC_TAG_TO_TOPIC` (inline mirror of `scripts/lib/lc_topic_map.json`) + `normalize_lc_topic(raw) -> Optional[str]`.
+  - `stats.py` `_do_sync`: aggregate `problemsSolved` by canonical topic (skip unmapped), `DELETE FROM topic_scores WHERE user_id=:uid` then insert one fresh canonical row each (`weakness_score=compute_weakness_score(canon, solved, solved)`). Imported `normalize_lc_topic`.
+  - `types/index.ts`: added `SheetProgressMe { progress_map, done, total, pct }`.
+  - `api/sheet.ts`: typed `getMySheetProgress` → `SheetProgressMe`.
+  - `QuestionRow.tsx`: when `onStatusChange` is passed, delegate persistence to parent and skip `updateQuestionProgress`; without it, unchanged.
+  - `TopicAccordion.tsx`: accept + forward optional `onStatusChange`.
+  - `Sheet.tsx`: hydrate via `useQuery(['sheet-progress'], getMySheetProgress)`; local `overrides` map for optimism; `progress = {...progress_map, ...overrides}`; `useMutation(updateSheetProgress)` invalidating `['sheet-progress']`; `onStatusChange` passed down; header/bars driven off `progress`; removed dead `setProgress`.
+- **Reason:** Sync stored raw LC tag-slugs (`array`, `binary-tree`, …) instead of the canonical 22 topics, so `TOPIC_WEIGHTS`/`CORE_TOPICS` never matched → `/roadmap` weakness null + readiness `topic_coverage` stuck at 33.3. Curated-sheet toggle wrote to `question_progress` and progress was never hydrated. Verified live: 39 raw rows → 19 canonical; readiness coverage 33.3 → 100, total 53 → 73; sheet PATCH/GET round-trip persists; `npm run build` type-clean.
+- **Gotcha:** runtime is **Python 3.9.6**, so PEP 604 `str | None` annotations crash at import — use `Optional[...]`.

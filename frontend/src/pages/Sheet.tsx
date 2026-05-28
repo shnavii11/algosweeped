@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getCuratedSheet, getSheetSources } from '../api/sheet'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getCuratedSheet, getSheetSources, getMySheetProgress, updateSheetProgress } from '../api/sheet'
 import TopicAccordion from '../components/questions/TopicAccordion'
-import type { Question } from '../types'
+import type { Question, QuestionProgress } from '../types'
 
 const TOPIC_ORDER = [
   'arrays','strings','hashing','two-pointers','sliding-window','prefix-sum',
@@ -25,9 +25,25 @@ const DISPLAY_NAMES: Record<string, string> = {
 }
 
 export default function Sheet() {
+  const queryClient = useQueryClient()
   const { data: sheet, isLoading } = useQuery({ queryKey: ['sheet'], queryFn: getCuratedSheet })
   const { data: sources } = useQuery({ queryKey: ['sheet-sources'], queryFn: getSheetSources })
-  const [progress, setProgress] = useState<Record<string, 'todo' | 'attempted' | 'done'>>({})
+  const { data: sheetProgress } = useQuery({ queryKey: ['sheet-progress'], queryFn: getMySheetProgress })
+
+  // Optimistic local overrides layered on top of the server-hydrated map.
+  const [overrides, setOverrides] = useState<Record<string, QuestionProgress['status']>>({})
+  const progress = { ...(sheetProgress?.progress_map ?? {}), ...overrides }
+
+  const mutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: QuestionProgress['status'] }) =>
+      updateSheetProgress(id, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sheet-progress'] }),
+  })
+
+  const handleStatusChange = (id: string, status: QuestionProgress['status']) => {
+    setOverrides((prev) => ({ ...prev, [id]: status }))
+    mutation.mutate({ id, status })
+  }
 
   if (isLoading) {
     return (
@@ -82,6 +98,7 @@ export default function Sheet() {
               displayName={DISPLAY_NAMES[topic] || topic}
               questions={questions}
               progress={progress}
+              onStatusChange={handleStatusChange}
             />
           )
         })}

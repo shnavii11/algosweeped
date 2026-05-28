@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..models.user import User, PlatformSnapshot, TopicScore
 from ..cache import get_cached, set_cached, delete_cached
-from ..services.intelligence import compute_weakness_score, compute_readiness_score
+from ..services.intelligence import compute_weakness_score, compute_readiness_score, normalize_lc_topic
 from .deps import get_current_user
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -110,23 +110,27 @@ async def _do_sync(user_id: str):
         """), {"uid": user_id})
         lc_row = lc_snap.first()
         if lc_row:
+            # Aggregate solved counts by canonical topic (many raw LC tag-slugs
+            # collapse onto one canonical topic, e.g. tree/binary-tree/dfs/bfs → trees).
             tag_counts = lc_row.raw_data.get("tagProblemCounts", {})
+            agg: dict[str, int] = {}
             for difficulty_group in tag_counts.values():
                 for tag_data in difficulty_group:
-                    topic = tag_data.get("tagSlug", "")
-                    solved = tag_data.get("problemsSolved", 0)
-                    ws = compute_weakness_score(topic, solved, solved)
-                    existing = await db.execute(
-                        select(TopicScore).where(TopicScore.user_id == user_id, TopicScore.topic == topic)
-                    )
-                    ts = existing.scalar_one_or_none()
-                    if ts:
-                        ts.solved = solved
-                        ts.weakness_score = ws
-                        ts.computed_at = datetime.now(timezone.utc)
-                    else:
-                        db.add(TopicScore(user_id=user_id, topic=topic, solved=solved,
-                                         attempted=solved, weakness_score=ws))
+                    canon = normalize_lc_topic(tag_data.get("tagSlug", ""))
+                    if canon is None:
+                        continue
+                    agg[canon] = agg.get(canon, 0) + tag_data.get("problemsSolved", 0)
+
+            # Clear stale rows (including legacy raw-slug rows) so canonical scores
+            # don't coexist with old data, then insert one fresh row per topic.
+            await db.execute(
+                text("DELETE FROM topic_scores WHERE user_id = :uid"), {"uid": user_id}
+            )
+            for canon, solved in agg.items():
+                db.add(TopicScore(
+                    user_id=user_id, topic=canon, solved=solved, attempted=solved,
+                    weakness_score=compute_weakness_score(canon, solved, solved),
+                ))
 
         user.last_synced = datetime.now(timezone.utc)
         await db.commit()

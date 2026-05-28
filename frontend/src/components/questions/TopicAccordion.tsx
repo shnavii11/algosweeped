@@ -9,9 +9,10 @@ interface Props {
   questions: Question[]
   progress?: Record<string, QuestionProgress['status']>
   defaultOpen?: boolean
+  onStatusChange?: (id: string, status: QuestionProgress['status']) => void
 }
 
-export default function TopicAccordion({ topic, displayName, questions, progress = {}, defaultOpen = false }: Props) {
+export default function TopicAccordion({ topic, displayName, questions, progress = {}, defaultOpen = false, onStatusChange }: Props) {
   const [open, setOpen] = useState(defaultOpen)
   const done = questions.filter((q) => progress[q.id] === 'done').length
 
@@ -40,7 +41,7 @@ export default function TopicAccordion({ topic, displayName, questions, progress
       {open && (
         <div className="bg-gray-900/50">
           {questions.map((q) => (
-            <QuestionRow key={q.id} question={q} status={progress[q.id]} />
+            <QuestionRow key={q.id} question={q} status={progress[q.id]} onStatusChange={onStatusChange} />
           ))}
         </div>
       )}
