@@ -51,3 +51,17 @@ Append-only. Each entry records a concrete change to the codebase.
   - `Sheet.tsx`: hydrate via `useQuery(['sheet-progress'], getMySheetProgress)`; local `overrides` map for optimism; `progress = {...progress_map, ...overrides}`; `useMutation(updateSheetProgress)` invalidating `['sheet-progress']`; `onStatusChange` passed down; header/bars driven off `progress`; removed dead `setProgress`.
 - **Reason:** Sync stored raw LC tag-slugs (`array`, `binary-tree`, …) instead of the canonical 22 topics, so `TOPIC_WEIGHTS`/`CORE_TOPICS` never matched → `/roadmap` weakness null + readiness `topic_coverage` stuck at 33.3. Curated-sheet toggle wrote to `question_progress` and progress was never hydrated. Verified live: 39 raw rows → 19 canonical; readiness coverage 33.3 → 100, total 53 → 73; sheet PATCH/GET round-trip persists; `npm run build` type-clean.
 - **Gotcha:** runtime is **Python 3.9.6**, so PEP 604 `str | None` annotations crash at import — use `Optional[...]`.
+
+---
+
+## 2026-05-28 — Step 4: wire the Gemini LLM into endpoints + Dashboard
+
+- **Scope:** `backend/app/services/llm.py`, `backend/app/routers/stats.py`, **new** `backend/app/routers/insights.py`, `backend/app/main.py`, `CLAUDE.md`, `frontend/src/types/index.ts`, **new** `frontend/src/api/insights.ts`, **new** `frontend/src/components/dashboard/RecommendedProblems.tsx`, `frontend/src/pages/Dashboard.tsx`, `frontend/src/components/dashboard/TopicTable.tsx`
+- **Changes:**
+  - `llm.py`: model id `gemini-2.0-flash-exp` → `gemini-2.0-flash` (exp alias retired/404).
+  - `stats.py`: extracted `compute_readiness_for_user(user, db) -> dict` (reused by insights; `/readiness` unchanged).
+  - `insights.py` (auth, registered in `main.py`): `GET /insights/readiness-summary`, `/insights/recommendations`, `/insights/topics/{topic}/explain` — thin wrappers over the 3 `llm.py` functions.
+  - Recommendations resolve `lc-<slug>` from the LLM against `questions.slug` (corpus id is `lc-<number>`), preserving order.
+  - `CLAUDE.md`: model id + `/insights/*` added to API inventory.
+  - Frontend: insights types + `api/insights.ts`; `RecommendedProblems` panel; `Dashboard` auto-loads narrative + recommendations on mount with empty/loading states; `TopicTable` `TopicRow` gains lazy click-to-expand `explain` (existing sort/colors untouched).
+- **Reason:** Backlog option 2 — surface the LLM now that Step 3 made `weak_topics` correct. Verified: all 3 endpoints 200 with correct shapes; slug-resolution confirmed (`two-sum`→`lc-1`); `npm run build` type-clean. LLM **content empty** because the Gemini free-tier key is **429 (quota exhausted)** — graceful fallback (`""/[]`) keeps endpoints 200; live generations untested until quota resets.

@@ -129,6 +129,9 @@ GET  /sheet/curated
 GET  /sheet/sources
 GET  /sheet/progress/me
 PATCH /sheet/progress/:problem_id
+GET  /insights/readiness-summary            ← LLM 2-sentence narrative (auth)
+GET  /insights/recommendations              ← LLM 3 next problems, slug-resolved (auth)
+GET  /insights/topics/:topic/explain        ← LLM 1-paragraph topic-gap (auth)
 ```
 
 Response envelope: `{ "success": true, "data": {...}, "meta": { "cached": bool, "fetched_at": "..." } }`
@@ -161,7 +164,7 @@ Response envelope: `{ "success": true, "data": {...}, "meta": { "cached": bool, 
 
 ## LLM Service Contract (`backend/app/services/llm.py`)
 
-Provider: **Gemini 2.0 Flash** (`gemini-2.0-flash-exp`) via `GEMINI_API_KEY`. Pluggable: set `LLM_PROVIDER=groq|mistral` to swap.
+Provider: **Gemini 2.0 Flash** (`gemini-2.0-flash`) via `GEMINI_API_KEY`. Pluggable: set `LLM_PROVIDER=groq|mistral` to swap. (The original `gemini-2.0-flash-exp` experimental alias was retired → 404; use the GA `gemini-2.0-flash`.)
 
 Three functions only — stateless, no chat history:
 1. `recommend_next_problems(weak_topics: list[str], solved_ids: set[str]) -> list[str]` — returns 3 question IDs

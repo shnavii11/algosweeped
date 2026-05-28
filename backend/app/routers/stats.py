@@ -138,19 +138,8 @@ async def _do_sync(user_id: str):
         await delete_cached(f"roadmap:{user_id}")
 
 
-@router.get("/{username}/readiness")
-async def get_readiness(username: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.username == username))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(404, "User not found")
-
-    cache_key = f"readiness:{user.id}"
-    cached = await get_cached(cache_key)
-    if cached:
-        return {"success": True, "data": cached, "meta": {"cached": True}}
-
-    # Pull latest snapshot stats
+async def compute_readiness_for_user(user: User, db: AsyncSession) -> dict:
+    """Compute the readiness score breakdown for a user from their latest snapshots."""
     lc_snap = await db.execute(text("""
         SELECT raw_data FROM platform_snapshots
         WHERE user_id=:uid AND platform='leetcode' ORDER BY fetched_at DESC LIMIT 1
@@ -187,7 +176,7 @@ async def get_readiness(username: str, db: AsyncSession = Depends(get_db)):
     lc_counts = lc_data.get("submitStatsGlobal", {}).get("acSubmissionNum", [])
     lc_by_diff = {d["difficulty"]: d["count"] for d in lc_counts}
 
-    score = compute_readiness_score(
+    return compute_readiness_score(
         lc_easy=lc_by_diff.get("Easy", 0),
         lc_medium=lc_by_diff.get("Medium", 0),
         lc_hard=lc_by_diff.get("Hard", 0),
@@ -197,6 +186,21 @@ async def get_readiness(username: str, db: AsyncSession = Depends(get_db)):
         sheet_done=int(sr.done or 0),
         sheet_total=int(sr.total or 1),
     )
+
+
+@router.get("/{username}/readiness")
+async def get_readiness(username: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    cache_key = f"readiness:{user.id}"
+    cached = await get_cached(cache_key)
+    if cached:
+        return {"success": True, "data": cached, "meta": {"cached": True}}
+
+    score = await compute_readiness_for_user(user, db)
 
     await set_cached(cache_key, score, ttl=3600)
     return {"success": True, "data": score, "meta": {"cached": False}}

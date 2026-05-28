@@ -15,7 +15,7 @@ async def _call_gemini(prompt: str) -> str:
     s = get_settings()
     if not s.gemini_api_key:
         return ""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={s.gemini_api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={s.gemini_api_key}"
     body = {"contents": [{"parts": [{"text": prompt}]}]}
     async with httpx.AsyncClient() as client:
         resp = await client.post(url, json=body, timeout=20)

@@ -90,3 +90,35 @@ Append-only. Each entry records one discrete step.
 - Left `lc-121` marked `done` on `shnavii11` as a verification artifact — untoggle in the UI if undesired.
 
 **Next (agreed backlog):** Option 2 — wire the Gemini LLM (now fed correct `weak_topics`); then Option 3 — thicken the curated sheet 250 → 350–450 via sheet loaders.
+
+---
+
+## 2026-05-28 — Wire the Gemini LLM (Step 4, backlog option 2)
+
+**Did (option 2 of the agreed 1→2→3 backlog):** Exposed the three bounded LLM functions in `backend/app/services/llm.py` via endpoints + Dashboard UI. They were already Redis-cached (24h) but nothing called them.
+- **Model fix:** `_call_gemini` `gemini-2.0-flash-exp` → `gemini-2.0-flash`. The `-exp` experimental alias is **retired (404)**; the GA model resolves (verified via ListModels). Updated the `CLAUDE.md` LLM contract + API inventory to match.
+- **Backend:**
+  - `stats.py`: extracted `compute_readiness_for_user(user, db) -> dict` from `get_readiness` (no behavior change to `/stats/{username}/readiness`); reused by the new summary endpoint.
+  - New `backend/app/routers/insights.py` (auth-gated, registered in `main.py`):
+    - `GET /insights/readiness-summary` → `summarize_readiness(breakdown)` → `{summary,total,breakdown}`.
+    - `GET /insights/recommendations` → weakest 4 topics (by `weakness_score` asc) + solved ids (question_progress ∪ sheet_progress, status='done') → `recommend_next_problems` → resolve `lc-<slug>` against `questions.slug` (LLM returns slugs; corpus id is `lc-<number>`), preserving order → `{recommendations,weak_topics}`.
+    - `GET /insights/topics/{topic}/explain` → user's topic_score → `explain_topic_gap(topic, accuracy, volume)` → `{topic,explanation}`.
+- **Frontend:**
+  - `types/index.ts`: `RecommendedProblem`, `Recommendations`, `ReadinessSummary`, `TopicExplanation`.
+  - New `api/insights.ts`: `getReadinessSummary` / `getRecommendations` / `getTopicExplanation`.
+  - New `components/dashboard/RecommendedProblems.tsx`: 3-problem panel with loading skeleton + empty state.
+  - `Dashboard.tsx`: auto-loads readiness-summary + recommendations on mount (own async queries, `enabled` on username); renders narrative line (hidden when empty) + the panel.
+  - `TopicTable.tsx`: extracted `TopicRow` with a lazy `useQuery(getTopicExplanation, enabled:expanded)`; chevron toggles an inline explanation; row label/bar still navigate to `/questions?topic=`. (Existing sort + bar colors left unchanged — intentionally out of scope.)
+
+**Result: Plumbing verified; live generation blocked by quota.**
+- All 3 endpoints return **200** with correct shapes (dev JWT, `shnavii11`): readiness-summary `total=73.0` + breakdown; recommendations `weak_topics=['dynamic-programming','tries','segment-trees','backtracking']` (canonical, weakest-first); explain returns the topic.
+- LLM **content is empty** (`summary:''`, `recommendations:[]`, `explanation:''`) because the Gemini free-tier key is **429 (daily quota exhausted)**. `llm.py` catches and returns `""/[]`, so endpoints stay 200 and the UI shows graceful "unavailable"/empty states.
+- Slug-resolution path verified independently of the LLM: input `['two-sum','regular-expression-matching','same-tree']` → resolves to `lc-1/lc-10/lc-100`, preserving input order.
+- Frontend `npm run build` type-clean.
+
+**Known gaps:**
+- Live LLM generations not exercised end-to-end (key 429 until quota resets, ~UTC midnight). Model name + plumbing confirmed correct; only the provider call is blocked.
+- `explain_topic_gap` is fed `accuracy = solved/attempted = 1.0` (attempted==solved since Step 3), so explanations are volume-driven — unchanged known limitation.
+- `/insights/readiness-summary` is current-user/auth only (no public-profile narrative yet).
+
+**Next (agreed backlog):** Option 3 — thicken the curated sheet 250 → 350–450 via the sheet loaders / aggregation (only 2 of 16 sources currently resolve problems).

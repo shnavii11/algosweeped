@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getMyStats, triggerSync, getReadiness } from '../api/stats'
+import { getReadinessSummary, getRecommendations } from '../api/insights'
 import ReadinessScore from '../components/dashboard/ReadinessScore'
 import TopicTable from '../components/dashboard/TopicTable'
 import PlatformCard from '../components/dashboard/PlatformCard'
+import RecommendedProblems from '../components/dashboard/RecommendedProblems'
 
 // Snapshot raw_data is platform-shaped (LeetCode is deeply nested); flatten to
 // a few headline numbers the generic PlatformCard can render.
@@ -28,6 +30,16 @@ export default function Dashboard() {
   const { data: readiness } = useQuery({
     queryKey: ['readiness', username],
     queryFn: () => getReadiness(username!),
+    enabled: !!username,
+  })
+  const { data: summary } = useQuery({
+    queryKey: ['readiness-summary', username],
+    queryFn: getReadinessSummary,
+    enabled: !!username,
+  })
+  const { data: recs, isLoading: recsLoading } = useQuery({
+    queryKey: ['recommendations', username],
+    queryFn: getRecommendations,
     enabled: !!username,
   })
   const [syncing, setSyncing] = useState(false)
@@ -74,6 +86,14 @@ export default function Dashboard() {
         <PlatformCard platform="leetcode" data={summarize('leetcode', data?.snapshots?.leetcode?.data)} />
         <PlatformCard platform="codeforces" data={summarize('codeforces', data?.snapshots?.codeforces?.data)} />
       </div>
+
+      {summary?.summary && (
+        <p className="text-sm text-gray-300 leading-relaxed border-l-2 border-blue-500/60 pl-3">
+          {summary.summary}
+        </p>
+      )}
+
+      <RecommendedProblems items={recs?.recommendations} weakTopics={recs?.weak_topics} isLoading={recsLoading} />
 
       {data?.topic_scores && <TopicTable topics={data.topic_scores} />}
     </div>

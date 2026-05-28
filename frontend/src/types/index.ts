@@ -111,3 +111,28 @@ export interface ReadinessScore {
     sheet_progress: number
   }
 }
+
+export interface RecommendedProblem {
+  id?: string
+  slug: string
+  title: string
+  url?: string
+  difficulty?: Question['difficulty']
+  platform?: Question['platform']
+}
+
+export interface Recommendations {
+  recommendations: RecommendedProblem[]
+  weak_topics: string[]
+}
+
+export interface ReadinessSummary {
+  summary: string
+  total: number
+  breakdown: ReadinessScore['breakdown']
+}
+
+export interface TopicExplanation {
+  topic: string
+  explanation: string
+}
