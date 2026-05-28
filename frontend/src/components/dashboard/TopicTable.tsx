@@ -50,7 +50,7 @@ function TopicRow({ topic }: { topic: TopicScore }) {
           />
         </div>
         <span className="text-xs text-gray-500 w-16 text-right">
-          {topic.solved}/{topic.attempted}
+          {topic.solved} solved
         </span>
       </div>
 

@@ -38,11 +38,11 @@ async def recommendations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Weakest topics first (lowest weakness_score = least developed / hardest-weighted).
+    # Weakest topics first (highest weakness_score = important + under-solved).
     ts_result = await db.execute(
         select(TopicScore.topic)
         .where(TopicScore.user_id == current_user.id)
-        .order_by(TopicScore.weakness_score.asc())
+        .order_by(TopicScore.weakness_score.desc())
         .limit(WEAK_TOPIC_LIMIT)
     )
     weak_topics = [row[0] for row in ts_result.all()]

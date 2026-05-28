@@ -1,6 +1,5 @@
 """Topic weakness score + interview readiness score computation."""
-import math
-from typing import Optional
+from typing import Optional, Dict
 
 TOPIC_WEIGHTS = {
     "dynamic-programming": 1.4,
@@ -14,6 +13,10 @@ TOPIC_WEIGHTS = {
 }
 
 CORE_TOPICS = ["dynamic-programming", "graphs", "trees", "binary-search", "arrays", "strings"]
+
+TARGET_SOLVED = 20
+_MAX_WEIGHT = max(TOPIC_WEIGHTS.values())  # 1.4
+WEAK_THRESHOLD = 0.4
 
 # Inline mirror of scripts/lib/lc_topic_map.json — keeps the backend self-contained
 # for deploy (LeetCode raw tag-slugs → canonical 22-topic taxonomy).
@@ -79,19 +82,30 @@ def normalize_lc_topic(raw: str) -> Optional[str]:
     return LC_TAG_TO_TOPIC.get(raw)
 
 
-def compute_weakness_score(topic: str, solved: int, attempted: int) -> float:
-    accuracy = solved / max(attempted, 1)
-    volume_bonus = min(solved / 20, 1.0)
-    raw = 0.7 * accuracy + 0.3 * volume_bonus
-    weight = TOPIC_WEIGHTS.get(topic, 1.0)
-    return round(raw / weight, 4)
+def aggregate_lc_topics(tag_problem_counts: dict) -> Dict[str, int]:
+    """Collapse raw LC tagProblemCounts (by difficulty group) into canonical topic → solved."""
+    agg: Dict[str, int] = {}
+    for difficulty_group in tag_problem_counts.values():
+        for tag_data in difficulty_group:
+            canon = normalize_lc_topic(tag_data.get("tagSlug", ""))
+            if canon is None:
+                continue
+            agg[canon] = agg.get(canon, 0) + tag_data.get("problemsSolved", 0)
+    return agg
+
+
+def compute_weakness_score(topic: str, solved: int) -> float:
+    """Higher score = weaker: important topics with few solved problems rank highest."""
+    mastery = min(solved / TARGET_SOLVED, 1.0)
+    importance = TOPIC_WEIGHTS.get(topic, 1.0) / _MAX_WEIGHT
+    return round(importance * (1.0 - mastery), 4)
 
 
 def compute_readiness_score(
     lc_easy: int, lc_medium: int, lc_hard: int,
     cf_solved: int,
     github_active_repos: int,
-    topic_scores: list[dict],
+    topic_scores: list,
     sheet_done: int, sheet_total: int,
 ) -> dict:
     # DSA Consistency (35%)
@@ -102,10 +116,11 @@ def compute_readiness_score(
     # GitHub Activity (25%)
     gh_score = min(github_active_repos / 3, 1.0)
 
-    # Topic Coverage (30%)
+    # Topic Coverage (30%): covered = weakness low (well-solved), absent = weakness 1.0 (never touched)
     strong_core = sum(
         1 for ts in topic_scores
-        if ts["topic"] in CORE_TOPICS and (ts.get("weakness_score") or 0) > 0.5
+        if ts["topic"] in CORE_TOPICS
+        and (ts.get("weakness_score") if ts.get("weakness_score") is not None else 1.0) < WEAK_THRESHOLD
     )
     coverage_score = strong_core / len(CORE_TOPICS)
 

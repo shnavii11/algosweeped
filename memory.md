@@ -65,3 +65,25 @@ Append-only. Each entry records a concrete change to the codebase.
   - `CLAUDE.md`: model id + `/insights/*` added to API inventory.
   - Frontend: insights types + `api/insights.ts`; `RecommendedProblems` panel; `Dashboard` auto-loads narrative + recommendations on mount with empty/loading states; `TopicTable` `TopicRow` gains lazy click-to-expand `explain` (existing sort/colors untouched).
 - **Reason:** Backlog option 2 — surface the LLM now that Step 3 made `weak_topics` correct. Verified: all 3 endpoints 200 with correct shapes; slug-resolution confirmed (`two-sum`→`lc-1`); `npm run build` type-clean. LLM **content empty** because the Gemini free-tier key is **429 (quota exhausted)** — graceful fallback (`""/[]`) keeps endpoints 200; live generations untested until quota resets.
+
+## Step 5 changes (2026-05-28)
+
+**`backend/app/services/intelligence.py`**
+- `compute_weakness_score` is now 2-arg `(topic, solved)` — dropped `attempted`. Formula: `importance × (1 − mastery)` where `mastery = min(solved/20, 1)`. Higher score = weaker topic.
+- Added `aggregate_lc_topics(tag_problem_counts) → Dict[str,int]` (extracted from `_do_sync`).
+- Added `TARGET_SOLVED=20`, `_MAX_WEIGHT=1.4`, `WEAK_THRESHOLD=0.4`.
+- `compute_readiness_score` coverage: counts core topics where `weakness_score < 0.4` (absent → 1.0 = not covered).
+
+**`backend/app/routers/stats.py`**
+- `_do_sync`: uses `aggregate_lc_topics`; calls `compute_weakness_score(canon, solved)`.
+- `/{username}/topics`: sorted `reverse=True` (weakest first).
+
+**`backend/app/routers/insights.py`**
+- `recommendations`: `order_by(weakness_score.desc())`.
+
+**`frontend/src/components/dashboard/TopicTable.tsx`**
+- Readout changed from `{solved}/{attempted}` → `{solved} solved`.
+
+**Tests added**
+- `backend/tests/test_intelligence.py`: 18 tests (pytest).
+- `frontend/src/api/__tests__/client.test.ts`: 5 tests (vitest).

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..models.user import User, PlatformSnapshot, TopicScore
 from ..cache import get_cached, set_cached, delete_cached
-from ..services.intelligence import compute_weakness_score, compute_readiness_score, normalize_lc_topic
+from ..services.intelligence import compute_weakness_score, compute_readiness_score, aggregate_lc_topics
 from .deps import get_current_user
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -110,16 +110,8 @@ async def _do_sync(user_id: str):
         """), {"uid": user_id})
         lc_row = lc_snap.first()
         if lc_row:
-            # Aggregate solved counts by canonical topic (many raw LC tag-slugs
-            # collapse onto one canonical topic, e.g. tree/binary-tree/dfs/bfs → trees).
             tag_counts = lc_row.raw_data.get("tagProblemCounts", {})
-            agg: dict[str, int] = {}
-            for difficulty_group in tag_counts.values():
-                for tag_data in difficulty_group:
-                    canon = normalize_lc_topic(tag_data.get("tagSlug", ""))
-                    if canon is None:
-                        continue
-                    agg[canon] = agg.get(canon, 0) + tag_data.get("problemsSolved", 0)
+            agg = aggregate_lc_topics(tag_counts)
 
             # Clear stale rows (including legacy raw-slug rows) so canonical scores
             # don't coexist with old data, then insert one fresh row per topic.
@@ -129,7 +121,7 @@ async def _do_sync(user_id: str):
             for canon, solved in agg.items():
                 db.add(TopicScore(
                     user_id=user_id, topic=canon, solved=solved, attempted=solved,
-                    weakness_score=compute_weakness_score(canon, solved, solved),
+                    weakness_score=compute_weakness_score(canon, solved),
                 ))
 
         user.last_synced = datetime.now(timezone.utc)
@@ -221,5 +213,5 @@ async def get_topics(username: str, db: AsyncSession = Depends(get_db)):
          "accuracy": ts.accuracy, "weakness_score": ts.weakness_score}
         for ts in ts_result.scalars()
     ]
-    rows.sort(key=lambda x: x.get("weakness_score") or 1.0)
+    rows.sort(key=lambda x: x.get("weakness_score") if x.get("weakness_score") is not None else -1.0, reverse=True)
     return {"success": True, "data": rows}

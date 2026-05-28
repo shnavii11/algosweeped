@@ -122,3 +122,20 @@ Append-only. Each entry records one discrete step.
 - `/insights/readiness-summary` is current-user/auth only (no public-profile narrative yet).
 
 **Next (agreed backlog):** Option 3 — thicken the curated sheet 250 → 350–450 via the sheet loaders / aggregation (only 2 of 16 sources currently resolve problems).
+
+## Step 5 — Fix weakness analytics + add test suite (2026-05-28)
+
+### Part A — Analytics fix
+- `backend/app/services/intelligence.py`: Rewrote `compute_weakness_score(topic, solved)` to `importance × (1 − mastery)` (dropped meaningless accuracy/attempted term). Added `TARGET_SOLVED=20`, `_MAX_WEIGHT`, `WEAK_THRESHOLD=0.4`. Added `aggregate_lc_topics()` extracted from `_do_sync`. Flipped `compute_readiness_score` coverage check: strong_core now counts topics with `weakness_score < WEAK_THRESHOLD` (absent → 1.0 = uncovered).
+- `backend/app/routers/stats.py`: Updated import to use `aggregate_lc_topics`; `_do_sync` now calls `compute_weakness_score(canon, solved)` (2 args). Fixed `/{username}/topics` sort to `reverse=True` (weakest first = highest score first).
+- `backend/app/routers/insights.py`: Changed `order_by(weakness_score.asc())` → `.desc()` so `weak_topics` fed to LLM are the genuinely weakest.
+- `frontend/src/components/dashboard/TopicTable.tsx`: Replaced `{solved}/{attempted}` (always same) with `{solved} solved`.
+
+### Part B — Test suite
+- `backend/requirements.txt`: Added `pytest==8.3.4`.
+- `backend/pytest.ini`: Created minimal config.
+- `backend/tests/test_intelligence.py`: 18 pure tests covering `compute_weakness_score`, `normalize_lc_topic`, `compute_readiness_score`, `aggregate_lc_topics`. All green.
+- `frontend/package.json` + `vite.config.ts`: Added vitest, `test` script.
+- `frontend/src/api/__tests__/client.test.ts`: 5 tests for the response interceptor envelope-unwrap logic. All green.
+
+**Verification:** `cd backend && .venv/bin/python -m pytest -q` → 18 passed. `cd frontend && npm run test` → 5 passed.
