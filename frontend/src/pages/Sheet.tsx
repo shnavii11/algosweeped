@@ -66,7 +66,15 @@ export default function Sheet() {
         {TOPIC_ORDER.map((topic) => {
           const problems = sheet?.[topic] || []
           if (!problems.length) return null
-          const questions: Question[] = problems.map((p) => p.question || p as unknown as Question)
+          const questions: Question[] = problems.map((p) => ({
+            id: p.question_id,
+            platform: p.platform ?? 'leetcode',
+            title: p.title ?? p.question_id,
+            url: p.url ?? '#',
+            difficulty: p.difficulty ?? 'medium',
+            slug: p.slug,
+            is_premium: p.is_premium ?? false,
+          }))
           return (
             <TopicAccordion
               key={topic}

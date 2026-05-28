@@ -54,8 +54,8 @@ export default function QuestionRow({ question, status = 'todo', onStatusChange 
         <Badge variant={question.platform === 'leetcode' ? 'blue' : 'gray'}>
           {question.platform === 'leetcode' ? 'LC' : 'CF'}
         </Badge>
-        {question.companies.slice(0, 2).map((c) => (
-          <Badge key={c.name} variant="gray" className="hidden md:inline-flex">{c.name}</Badge>
+        {(question.companies ?? []).slice(0, 2).map((c) => (
+          <Badge key={c} variant="gray" className="hidden md:inline-flex">{c}</Badge>
         ))}
         <a
           href={question.url}

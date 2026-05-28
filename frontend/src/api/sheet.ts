@@ -11,4 +11,4 @@ export const getMySheetProgress = () =>
   client.get('/sheet/progress/me').then((r) => r.data)
 
 export const updateSheetProgress = (problemId: string, status: string) =>
-  client.patch(`/sheet/progress/${problemId}`, { status }).then((r) => r.data)
+  client.patch(`/sheet/progress/${problemId}`, null, { params: { status } }).then((r) => r.data)

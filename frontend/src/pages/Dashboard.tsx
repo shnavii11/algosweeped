@@ -1,13 +1,35 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getMyStats, triggerSync } from '../api/stats'
+import { getMyStats, triggerSync, getReadiness } from '../api/stats'
 import ReadinessScore from '../components/dashboard/ReadinessScore'
 import TopicTable from '../components/dashboard/TopicTable'
 import PlatformCard from '../components/dashboard/PlatformCard'
 
+// Snapshot raw_data is platform-shaped (LeetCode is deeply nested); flatten to
+// a few headline numbers the generic PlatformCard can render.
+function summarize(platform: string, raw?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!raw) return undefined
+  const r = raw as any
+  if (platform === 'leetcode') {
+    const ac: { difficulty: string; count: number }[] = r.submitStatsGlobal?.acSubmissionNum ?? []
+    const byDiff = Object.fromEntries(ac.map((d) => [d.difficulty, d.count]))
+    return { solved: byDiff.All ?? 0, easy: byDiff.Easy ?? 0, medium: byDiff.Medium ?? 0, hard: byDiff.Hard ?? 0 }
+  }
+  if (platform === 'codeforces') {
+    return { rating: r.rating, max_rating: r.maxRating, rank: r.rank, solved: r.problemsSolved }
+  }
+  return raw
+}
+
 export default function Dashboard() {
   const qc = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: ['stats'], queryFn: getMyStats })
+  const username = data?.user?.username
+  const { data: readiness } = useQuery({
+    queryKey: ['readiness', username],
+    queryFn: () => getReadiness(username!),
+    enabled: !!username,
+  })
   const [syncing, setSyncing] = useState(false)
 
   const syncMutation = useMutation({
@@ -34,8 +56,8 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
           <p className="text-gray-400 text-sm mt-1">
-            {data?.user?.name || data?.user?.username}
-            {data?.user?.college && ` · ${data.user.college}`}
+            {data?.user?.username}
+            {data?.user?.last_synced && ` · synced ${new Date(data.user.last_synced).toLocaleDateString()}`}
           </p>
         </div>
         <button
@@ -48,9 +70,9 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ReadinessScore score={data?.readiness_score ?? 0} />
-        <PlatformCard platform="leetcode" data={data?.platform_data?.leetcode as Record<string, unknown>} />
-        <PlatformCard platform="codeforces" data={data?.platform_data?.codeforces as Record<string, unknown>} />
+        <ReadinessScore score={readiness?.total ?? 0} />
+        <PlatformCard platform="leetcode" data={summarize('leetcode', data?.snapshots?.leetcode?.data)} />
+        <PlatformCard platform="codeforces" data={summarize('codeforces', data?.snapshots?.codeforces?.data)} />
       </div>
 
       {data?.topic_scores && <TopicTable topics={data.topic_scores} />}

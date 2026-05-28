@@ -15,15 +15,15 @@ export interface User {
 export interface Question {
   id: string
   platform: 'leetcode' | 'codeforces'
-  number: string
+  number?: string
   title: string
   slug?: string
   url: string
   difficulty: 'easy' | 'medium' | 'hard'
   difficulty_rating?: number
   statement_html?: string
-  topics: string[]
-  companies: { name: string; frequency: number }[]
+  topics?: string[]
+  companies?: string[]
   is_premium: boolean
   acceptance_rate?: number
   solved_count?: number
@@ -61,8 +61,14 @@ export interface SheetProblem {
   cross_sheet_count: number
   source_sheets: string[]
   score: number
-  question: Question
   status?: 'todo' | 'attempted' | 'done'
+  // /sheet/curated returns the question fields flattened onto the row
+  title?: string
+  url?: string
+  difficulty?: Question['difficulty']
+  platform?: Question['platform']
+  slug?: string
+  is_premium?: boolean
 }
 
 export interface SheetSource {
@@ -73,13 +79,28 @@ export interface SheetSource {
   weight: number
 }
 
+export interface PlatformSnapshot {
+  data: Record<string, unknown>
+  fetched_at: string
+}
+
 export interface StatsMe {
-  user: User
-  readiness_score: number
+  user: { username: string; last_synced: string | null }
+  snapshots: {
+    leetcode?: PlatformSnapshot
+    codeforces?: PlatformSnapshot
+    github?: PlatformSnapshot
+  }
   topic_scores: TopicScore[]
-  platform_data: {
-    leetcode?: Record<string, unknown>
-    codeforces?: Record<string, unknown>
-    github?: Record<string, unknown>
+  sheet: { done: number; total: number }
+}
+
+export interface ReadinessScore {
+  total: number
+  breakdown: {
+    dsa_consistency: number
+    github_activity: number
+    topic_coverage: number
+    sheet_progress: number
   }
 }

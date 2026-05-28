@@ -12,7 +12,7 @@ export interface QuestionsFilter {
 }
 
 export const getQuestions = (params: QuestionsFilter) =>
-  client.get<{ items: Question[]; total: number }>('/questions', { params }).then((r) => r.data)
+  client.get<Question[]>('/questions', { params }).then((r) => r.data)
 
 export const getQuestionsByTopic = () =>
   client.get<Record<string, Question[]>>('/questions/by-topic').then((r) => r.data)
