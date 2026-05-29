@@ -57,7 +57,11 @@ async def recommend_next_problems(weak_topics: list[str], solved_ids: set[str]) 
     except Exception:
         result = []
 
-    await set_cached(key, result, ttl=86400)
+    # Never cache an empty/failed result — a transient 429 or outage would
+    # otherwise poison the cache for 24h and keep recommendations blank even
+    # after the provider recovers. The router supplies a corpus fallback.
+    if result:
+        await set_cached(key, result, ttl=86400)
     return result
 
 
@@ -77,7 +81,8 @@ async def summarize_readiness(score_breakdown: dict) -> str:
     except Exception:
         text = ""
 
-    await set_cached(key, text, ttl=86400)
+    if text:  # don't cache an empty result (see recommend_next_problems)
+        await set_cached(key, text, ttl=86400)
     return text
 
 
@@ -97,5 +102,6 @@ async def explain_topic_gap(topic: str, accuracy: float, volume: int) -> str:
     except Exception:
         text = ""
 
-    await set_cached(key, text, ttl=86400)
+    if text:  # don't cache an empty result (see recommend_next_problems)
+        await set_cached(key, text, ttl=86400)
     return text

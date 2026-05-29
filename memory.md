@@ -87,3 +87,34 @@ Append-only. Each entry records a concrete change to the codebase.
 **Tests added**
 - `backend/tests/test_intelligence.py`: 18 tests (pytest).
 - `frontend/src/api/__tests__/client.test.ts`: 5 tests (vitest).
+
+---
+
+## 2026-05-29 — Audit + steering hardening (docs only, no app code)
+
+- **Scope:** `CLAUDE.md`, **new** `step6.md`, `step5.md` (banner), `progress.md`, `memory.md`, persistent memory.
+- **Changes:**
+  - `CLAUDE.md`: fixed Python version (3.11 → "3.9.6 dev / 3.11 deploy"); added **Runtime Reality & Coding
+    Gotchas**, **Scoring Semantics**, **Tests**, and **Plan/spec file** (numbering convention) sections; fixed
+    repo-root name `icode-plus/` → `name_that_folder/`; header now points to the new gotcha sections.
+  - **new `step6.md`** = authoritative next-step plan (Fixes 1–4 + live E2E). `step5.md` gets a "SUPERSEDED by
+    step6.md" banner. Renumbered to end the `stepN.md`↔`progress.md` off-by-one.
+  - `progress.md`/`memory.md`: this audit logged.
+- **Reason:** `CLAUDE.md` (the SSOT) contradicted the real runtime (3.9.6) — a contradiction that broke past
+  sessions twice via PEP 604 annotations. Audit verified Step 5 is correct (18+5 tests green, 3.9 import clean,
+  tsc clean) and surfaced 4 pre-existing bugs (insights bogus accuracy, sheet cache, **roadmap cache — new**,
+  Profile :username), all queued into `step6.md`. No application code changed this session.
+- **Gotcha:** `npx tsc` installs a bogus `tsc@2.0.4`; use `./node_modules/.bin/tsc` or `npm run build`.
+
+
+## 2026-05-30 — Fix: Insights cards blank ("nothing available")
+- Root cause: Gemini free-tier quota exhausted -> HTTP 429 on every call; all 3 llm.py
+  functions catch and return []/"". Compounding: llm.py cached the empty/failed result for
+  24h, keeping cards blank even after quota reset. (cache.py already degrades gracefully; Redis
+  was NOT the cause.)
+- Fix: llm.py now only set_cached on non-empty results. insights.py recommendations top up from
+  corpus (questions JOIN question_topics on weak topics, non-premium, by acceptance_rate) when
+  LLM yields <3; explain_topic + readiness_summary get deterministic non-LLM fallbacks
+  (_fallback_topic_explanation via roadmap_topics, _fallback_readiness_summary from breakdown).
+- Tests: +3 pure tests in tests/test_intelligence.py (slug format; empty-not-cached). 21 green.
+- Spec'd in step6.md "Part 0". Files: backend/app/services/llm.py, backend/app/routers/insights.py.

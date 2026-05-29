@@ -1,7 +1,9 @@
 """Pure-function tests for intelligence.py — no I/O, no DB, no Redis."""
+import asyncio
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from app.services import llm
 from app.services.intelligence import (
     TARGET_SOLVED,
     WEAK_THRESHOLD,
@@ -156,3 +158,36 @@ def test_aggregate_sums_across_difficulty_groups():
 
 def test_aggregate_empty_input():
     assert aggregate_lc_topics({}) == {}
+
+
+# ── LLM resilience (no Redis/network: _call_llm monkeypatched, cache is a no-op) ──
+
+def test_recommend_formats_slugs(monkeypatch):
+    async def fake_call(_prompt):
+        return '["two-sum", "lc-3sum", "valid-parentheses"]'
+    monkeypatch.setattr(llm, "_call_llm", fake_call)
+    out = asyncio.run(llm.recommend_next_problems(["arrays"], set()))
+    assert out == ["lc-two-sum", "lc-3sum", "lc-valid-parentheses"]
+
+
+def test_recommend_returns_empty_without_caching_on_failure(monkeypatch):
+    # Provider failure (e.g. 429) must degrade to [] and NOT poison the cache.
+    async def boom(_prompt):
+        raise RuntimeError("429 quota exceeded")
+    cached = {}
+    monkeypatch.setattr(llm, "_call_llm", boom)
+    monkeypatch.setattr(llm, "set_cached", lambda *a, **k: cached.setdefault("written", True))
+    out = asyncio.run(llm.recommend_next_problems(["arrays"], set()))
+    assert out == []
+    assert "written" not in cached  # empty result was never cached
+
+
+def test_summarize_readiness_empty_not_cached(monkeypatch):
+    async def boom(_prompt):
+        raise RuntimeError("429")
+    cached = {}
+    monkeypatch.setattr(llm, "_call_llm", boom)
+    monkeypatch.setattr(llm, "set_cached", lambda *a, **k: cached.setdefault("written", True))
+    out = asyncio.run(llm.summarize_readiness({"dsa_consistency": 50}))
+    assert out == ""
+    assert "written" not in cached

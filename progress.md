@@ -139,3 +139,60 @@ Append-only. Each entry records one discrete step.
 - `frontend/src/api/__tests__/client.test.ts`: 5 tests for the response interceptor envelope-unwrap logic. All green.
 
 **Verification:** `cd backend && .venv/bin/python -m pytest -q` → 18 passed. `cd frontend && npm run test` → 5 passed.
+
+---
+
+## 2026-05-29 — Audit + steering hardening (pre-Step 6, no app-code change)
+
+**Did:** Full read-through of all Step 5 changes + surrounding code; re-ran every check; hardened
+the steering docs; wrote the authoritative next-step plan. **No application code was changed this session.**
+
+**Tested (all green):**
+- Backend `pytest -q` → **18 passed**. Frontend `npm run test` (vitest) → **5 passed**.
+- Backend imports/compiles under **Python 3.9.6** (`py_compile` on insights/stats/roadmap/sheet/questions;
+  `import intelligence` runs). Spot-checked the new metric live: `compute_weakness_score('graphs',0)=0.9286`
+  (=1.3/1.4), `('arrays',20)=0.0`. ✓
+- Frontend typecheck: **`./node_modules/.bin/tsc --noEmit` clean.** (Gotcha: `npx tsc` installs a *bogus*
+  `tsc@2.0.4` package — always use the local binary or `npm run build`.)
+
+**Audit result — Step 5 shipped correctly.** Weakness metric, readiness-coverage flip, sort direction
+(`.desc()`/`reverse=True`), and `TopicTable` colors are all internally consistent under "higher = weaker".
+
+**Bugs found (none are Step 5 regressions; all pre-existing — queued into `step6.md`):**
+1. **`insights.py:90` still feeds bogus 100% accuracy to the LLM.** `attempted==solved` + `accuracy=None`
+   ⇒ `solved/max(attempted,1)` is always `1.0`. The exact bug Step 5 killed in scoring, still leaking into
+   the topic-gap prompt. → Fix 3.
+2. **`sheet.py` PATCH doesn't bust `stats:`/`readiness:`** (1h stale window on the Dashboard). → Fix 2.
+3. **`questions.py` PATCH doesn't bust `roadmap:{uid}`** — *new finding.* `roadmap.py` derives
+   `user_solved`/`user_attempted` from `question_progress` and caches under `roadmap:{uid}` (1h), so the
+   Roadmap page lags. This **corrects `step5.md`**, which claimed `question_progress` only feeds the
+   (LLM-cached) recommendations and so `questions.py` needed no bust. → Fix 4.
+4. **`Profile.tsx` ignores the `:username` route param** (always shows own data; `getPublicProfile` not wired). → Fix 1.
+- Minor/pre-existing (backlog, not fixing): `llm.py` groq branch uses `gemini_api_key` for auth; recommend
+  cache key truncates `solved_ids[:20]`; `@vitest/ui` devDep unused.
+
+**Steering hardening — `CLAUDE.md` (the single source of truth was contradicting reality):**
+- **Runtime:** table said "Python 3.11"; actual dev venv is **3.9.6**. Added a **Runtime Reality & Coding
+  Gotchas** section (no PEP 604 unions; `attempted==solved` is a placeholder so accuracy is meaningless;
+  `LC_TAG_TO_TOPIC` is an inline mirror to keep in sync; requirements pins are 3.14-era). This contradiction
+  had already bitten twice (Steps 3 & 5).
+- Added **Scoring Semantics** (weakness higher=weaker, formula, descending sort, readiness coverage rule)
+  and **Tests** (commands + keep-green) sections.
+- Fixed the repo-root name (`icode-plus/` → `name_that_folder/`) and added the **plan-file numbering
+  convention** (`stepN.md`'s N = the `progress.md` Step N it becomes; legacy step4/step5 are offset by one).
+
+**Next-step plan:** wrote **`step6.md`** (authoritative; supersedes `step5.md`, which now carries a pointer
+banner). Covers Fixes 1–4 + live E2E browser walk-through. **What worked:** the hermetic test suite made the
+audit fast and trustworthy; reading `roadmap.py` end-to-end is what surfaced the cache bug the prior plan
+missed. **What didn't change:** no app code touched — fixes deliberately deferred to the Step 6 coding pass
+so they land with their E2E verification.
+
+**Next:** code Step 6 (`step6.md`).
+
+
+## Step 6 (Part 0) — Insights resilience fix (2026-05-30)
+Diagnosed dashboard "No recommendations available" + "Explanation unavailable": Gemini 429
+(quota) + llm.py caching empty failures 24h + no non-LLM fallback. Shipped: stop caching empty
+results; corpus fallback for /insights/recommendations; deterministic fallbacks for topic-explain
+and readiness-summary. 21 backend tests green. Remaining step6 items (Public Profile, cache-bust,
+accuracy proxy) still backlog as Part 1.
