@@ -196,3 +196,24 @@ Diagnosed dashboard "No recommendations available" + "Explanation unavailable": 
 results; corpus fallback for /insights/recommendations; deterministic fallbacks for topic-explain
 and readiness-summary. 21 backend tests green. Remaining step6 items (Public Profile, cache-bust,
 accuracy proxy) still backlog as Part 1.
+
+
+## Step 7 (Part 1) — The four Step-6 Part-1 bug fixes (2026-05-30)
+Coded the four deferred fixes from `step6.md`/`step7.md`. All tests green (21 backend, 5 frontend, tsc clean).
+
+1. **Public Profile page (Fix 1).** `Profile.tsx` now reads the `:username` route param: own profile
+   (no param or matches `me.username`) keeps the editable view; another username fetches
+   `getPublicProfile()` → `GET /users/{username}/public` and renders a **read-only** card (no edit button),
+   showing GitHub via `github_login`. 404 → "User not found" card. Added `getPublicProfile` to `api/auth.ts`
+   and optional `github_login?: string` to the `User` type (UserPublic's field name differs from `gh_username`).
+2. **Sheet progress cache-bust (Fix 2).** `sheet.py` `update_sheet_progress` now imports `delete_cached` and
+   busts `stats:{uid}` + `readiness:{uid}` after commit, so the Dashboard's `sheet.done`/readiness update now.
+3. **Topic-gap mastery proxy (Fix 3).** `insights.py` `explain_topic` no longer feeds the bogus
+   `solved/max(attempted,1) == 1.0` accuracy to the LLM; it passes `mastery = round(1 - weakness_score, 2)`.
+   `llm.explain_topic_gap` param renamed `accuracy → mastery`, prompt reworded to "≈{mastery*100}% of a target
+   baseline", cache-key field renamed to `mastery`. No test referenced the old prompt/key.
+4. **Question progress roadmap cache-bust (Fix 4).** `questions.py` `update_progress` now imports
+   `delete_cached` and busts `roadmap:{uid}` after commit (NOT stats:/readiness: — `question_progress`
+   doesn't feed them), so the Roadmap page's `user_solved` updates now.
+
+**Next:** Part 2 (curated-sheet thickening 250→350–450), Part 3 (E2E browser walk), Part 4 (cleanup).

@@ -86,14 +86,14 @@ async def summarize_readiness(score_breakdown: dict) -> str:
     return text
 
 
-async def explain_topic_gap(topic: str, accuracy: float, volume: int) -> str:
-    key = cache_key_for_input("llm:gap", {"topic": topic, "accuracy": accuracy, "volume": volume})
+async def explain_topic_gap(topic: str, mastery: float, volume: int) -> str:
+    key = cache_key_for_input("llm:gap", {"topic": topic, "mastery": mastery, "volume": volume})
     cached = await get_cached(key)
     if cached:
         return cached
 
     prompt = (
-        f"A student has solved {volume} {topic} problems with {accuracy*100:.0f}% accuracy. "
+        f"A student has solved {volume} {topic} problems (≈{mastery*100:.0f}% of a target baseline). "
         f"Write one paragraph (3-4 sentences) diagnosing their gap and the specific sub-pattern they should drill. "
         f"Be concrete, no generic advice."
     )

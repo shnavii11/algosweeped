@@ -7,7 +7,7 @@ from ..database import get_db
 from ..models.question import Question, QuestionTopic, QuestionProgress
 from ..models.user import User
 from ..schemas.question import QuestionOut, QuestionProgressUpdate
-from ..cache import get_cached, set_cached
+from ..cache import get_cached, set_cached, delete_cached
 from .deps import get_current_user
 
 router = APIRouter(prefix="/questions", tags=["questions"])
@@ -155,4 +155,8 @@ async def update_progress(
         )
         db.add(prog)
     await db.commit()
+    # Roadmap derives per-topic user_solved/user_attempted from question_progress
+    # and caches it (roadmap:{uid}, 1h) — bust it so the Roadmap page updates now.
+    # stats:/readiness: are NOT fed by question_progress, so leave them alone.
+    await delete_cached(f"roadmap:{current_user.id}")
     return {"success": True, "data": {"status": body.status}}

@@ -8,6 +8,8 @@ export interface User {
   lc_username?: string
   cf_handle?: string
   gh_username?: string
+  // UserPublic exposes the OAuth login as `github_login` (not `gh_username`).
+  github_login?: string
   created_at: string
   last_synced?: string
 }

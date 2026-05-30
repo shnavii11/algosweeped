@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..models.user import User
 from ..models.question import SheetProgress
-from ..cache import get_cached, set_cached
+from ..cache import get_cached, set_cached, delete_cached
 from .deps import get_current_user
 
 router = APIRouter(prefix="/sheet", tags=["sheet"])
@@ -93,4 +93,8 @@ async def update_sheet_progress(
         prog = SheetProgress(user_id=current_user.id, problem_id=problem_id, status=status)
         db.add(prog)
     await db.commit()
+    # Sheet progress feeds stats (sheet.done/total, 1h) and readiness (reads
+    # sheet_progress, 1h) — bust both so the Dashboard reflects the change now.
+    await delete_cached(f"stats:{current_user.id}")
+    await delete_cached(f"readiness:{current_user.id}")
     return {"success": True, "data": {"status": status}}

@@ -148,8 +148,11 @@ async def explain_topic(
     if not ts:
         raise HTTPException(404, "No score for that topic — sync first")
 
-    accuracy = ts.accuracy if ts.accuracy is not None else ts.solved / max(ts.attempted, 1)
-    explanation = await llm.explain_topic_gap(topic, accuracy, ts.solved)
+    # accuracy is meaningless (attempted == solved placeholder), so derive a
+    # mastery proxy from weakness_score instead: mastery = 1 - weakness (HIGHER
+    # weakness = WEAKER), clamped via the score's [0,1] range.
+    mastery = round(1.0 - (ts.weakness_score or 0.0), 2)
+    explanation = await llm.explain_topic_gap(topic, mastery, ts.solved)
     if not explanation:
         rm = await db.execute(
             text("SELECT summary, core_patterns FROM roadmap_topics WHERE topic = :t"),

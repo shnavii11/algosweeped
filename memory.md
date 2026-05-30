@@ -118,3 +118,14 @@ Append-only. Each entry records a concrete change to the codebase.
   (_fallback_topic_explanation via roadmap_topics, _fallback_readiness_summary from breakdown).
 - Tests: +3 pure tests in tests/test_intelligence.py (slug format; empty-not-cached). 21 green.
 - Spec'd in step6.md "Part 0". Files: backend/app/services/llm.py, backend/app/routers/insights.py.
+
+
+## 2026-05-30 — Step 7 Part 1: four Step-6 bug fixes
+- Fix 1 (Public Profile): `frontend/src/pages/Profile.tsx` reads `:username`; own=editable, other=read-only
+  via `getPublicProfile()` (new in `api/auth.ts`), GitHub shown via `github_login` (added to `User` type).
+  404 → "User not found".
+- Fix 2: `backend/app/routers/sheet.py` busts `stats:{uid}`+`readiness:{uid}` after sheet-progress commit.
+- Fix 3: `backend/app/routers/insights.py` passes `mastery = 1 - weakness_score` (not bogus 100% accuracy);
+  `llm.explain_topic_gap` param `accuracy→mastery`, prompt + cache-key field renamed.
+- Fix 4: `backend/app/routers/questions.py` busts `roadmap:{uid}` after question-progress commit (not stats/readiness).
+- Tests: 21 backend + 5 frontend green; `./node_modules/.bin/tsc --noEmit` clean. No .env touched.
