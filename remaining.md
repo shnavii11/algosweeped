@@ -40,7 +40,9 @@ Snapshot as of 2026-05-30. Source of truth for what's left; see `step6.md` for f
 
 ## 🔵 Backlog (larger, recorded only)
 - [ ] **Deployment** — Vercel (frontend) + Railway (backend) + Supabase (DB).
-- [ ] **Thicken curated sheet** 250 → 350–450 problems (only 2 of 16 sheet sources currently resolve).
+- [x] **Thicken curated sheet** 250 → **406** problems (Step 7 Part 2, 2026-05-30). 6 of 16 sources now
+  resolve (NeetCode all/150 + Blind75 + SeanPrashad + 2 LC plans). Striver/Grind/CSES repos dead → left as
+  genuine 0-count misses.
 - [ ] Investigate odd weakness bands (e.g. `arrays` at 174 solved still flags "high-priority" in the
   explain fallback — check stored `weakness_score` for high-volume topics).
 - [ ] Minor hardening: `llm.py` groq branch uses `gemini_api_key` for its auth header; recommend

@@ -49,74 +49,70 @@ SHEET_WEIGHTS = {
 }
 
 # ─── Sheet loaders ────────────────────────────────────────────────────────────
+#
+# Ground truth (re-verified 2026-05-30): the old GitHub-raw URLs for NeetCode,
+# Blind75, Grind, Striver and CSES are all dead (404), which is why only the two
+# LC GraphQL study-plans resolved. The live sources below verify 100% slug→corpus
+# resolution. Sources with no surviving JSON feed (Striver, Grind, CSES, AlgoExpert,
+# USACO, A2OJ, NeetCode-250, Babbar) are intentionally NOT fetched — they stay as
+# 0-count rows in sheet_sources rather than forced. See step7.md Part 2.
 
-async def load_neetcode(client: httpx.AsyncClient, sheet_id: str, url: str) -> list[dict]:
-    resp = await client.get(url, timeout=30)
-    data = resp.json()
-    items = data if isinstance(data, list) else []
+async def _fetch_json(client: httpx.AsyncClient, url: str, cache_name: str):
+    """GET url, cache the raw response to data/sheets/<cache_name>, return parsed JSON."""
+    resp = await client.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+    resp.raise_for_status()
+    (SHEETS_DIR / cache_name).write_text(resp.text)
+    return resp.json()
+
+
+async def load_neetcode_master(client: httpx.AsyncClient) -> list[list[dict]]:
+    """neetcode-gh master file (450 problems) → three feeds in one fetch.
+
+    Each problem carries {link, pattern, difficulty, neetcode150: bool, blind75: bool}.
+    Emits neetcode_all (all 450), neetcode_150 (flag), blind75 (flag).
+    """
+    data = await _fetch_json(
+        client,
+        "https://raw.githubusercontent.com/neetcode-gh/leetcode/main/.problemSiteData.json",
+        "neetcode_master.json",
+    )
+    all_e: list[dict] = []
+    nc150: list[dict] = []
+    blind: list[dict] = []
+    for p in data:
+        slug = (p.get("link") or "").strip("/").split("/")[-1]
+        if not slug:
+            continue
+        hint = p.get("pattern", "")
+        all_e.append({"sheet_id": "neetcode_all", "slug": slug, "platform": "leetcode",
+                      "position": len(all_e) + 1, "topic_hint": hint})
+        if p.get("neetcode150"):
+            nc150.append({"sheet_id": "neetcode_150", "slug": slug, "platform": "leetcode",
+                          "position": len(nc150) + 1, "topic_hint": hint})
+        if p.get("blind75"):
+            blind.append({"sheet_id": "blind75", "slug": slug, "platform": "leetcode",
+                          "position": len(blind) + 1, "topic_hint": hint})
+    return [all_e, nc150, blind]
+
+
+async def load_seanprashad(client: httpx.AsyncClient) -> list[dict]:
+    """SeanPrashad leetcode-patterns (~178) — carries the LC `slug` directly."""
+    data = await _fetch_json(
+        client,
+        "https://raw.githubusercontent.com/seanprashad/leetcode-patterns/master/src/data/questions.json",
+        "seanprashad.json",
+    )
+    items = data.get("data", []) if isinstance(data, dict) else data
     out = []
     for i, p in enumerate(items):
-        slug = (p.get("link") or p.get("url") or "").rstrip("/").split("/")[-1]
-        out.append({"sheet_id": sheet_id, "slug": slug, "platform": "leetcode",
-                    "position": i+1, "topic_hint": p.get("category") or p.get("neetcodeLink","").split("/")[-2]})
+        slug = (p.get("slug") or "").strip("/")
+        if not slug:
+            continue
+        pat = p.get("pattern")
+        hint = pat[0] if isinstance(pat, list) and pat else (pat or "")
+        out.append({"sheet_id": "seanprashad_patterns", "slug": slug, "platform": "leetcode",
+                    "position": i + 1, "topic_hint": hint})
     return out
-
-
-async def load_grind(client: httpx.AsyncClient, sheet_id: str, count: int) -> list[dict]:
-    url = f"https://raw.githubusercontent.com/yangshun/tech-interview-handbook/main/apps/website/contents/grind{count}.json"
-    try:
-        resp = await client.get(url, timeout=20)
-        data = resp.json()
-    except Exception:
-        # Try alternate location
-        url2 = "https://raw.githubusercontent.com/yangshun/grind75/main/src/problemsByDifficulty.json"
-        resp = await client.get(url2, timeout=20)
-        data = resp.json()
-    items = data if isinstance(data, list) else data.get("questions", [])
-    out = []
-    for i, p in enumerate(items):
-        slug = (p.get("link") or p.get("url") or p.get("href") or "").rstrip("/").split("/")[-1]
-        out.append({"sheet_id": sheet_id, "slug": slug, "platform": "leetcode",
-                    "position": i+1, "topic_hint": p.get("category", "")})
-    return out
-
-
-async def load_blind75(client: httpx.AsyncClient) -> list[dict]:
-    url = "https://raw.githubusercontent.com/neetcode-gh/leetcode/main/blind75.json"
-    try:
-        resp = await client.get(url, timeout=20)
-        data = resp.json()
-    except Exception:
-        data = []
-    out = []
-    for i, p in enumerate(data if isinstance(data, list) else []):
-        slug = (p.get("link") or p.get("slug") or "").rstrip("/").split("/")[-1]
-        out.append({"sheet_id": "blind75", "slug": slug, "platform": "leetcode",
-                    "position": i+1, "topic_hint": p.get("category","")})
-    return out
-
-
-async def load_striver_a2z(client: httpx.AsyncClient) -> list[dict]:
-    # Try community JSON mirrors
-    urls = [
-        "https://raw.githubusercontent.com/striver79/StriversA2ZSheet/main/problems.json",
-        "https://raw.githubusercontent.com/tuf-code/tuf-graphql-data/main/a2z.json",
-    ]
-    for url in urls:
-        try:
-            resp = await client.get(url, timeout=20)
-            data = resp.json()
-            items = data if isinstance(data, list) else data.get("problems", [])
-            out = []
-            for i, p in enumerate(items):
-                slug = (p.get("link") or p.get("lc_link") or p.get("url") or "").rstrip("/").split("/")[-1]
-                out.append({"sheet_id": "striver_a2z", "slug": slug, "platform": "leetcode",
-                            "position": i+1, "topic_hint": p.get("topic","")})
-            if out:
-                return out
-        except Exception:
-            pass
-    return []
 
 
 async def load_lc_studyplan(client: httpx.AsyncClient, sheet_id: str, plan_slug: str) -> list[dict]:
@@ -149,60 +145,32 @@ async def load_lc_studyplan(client: httpx.AsyncClient, sheet_id: str, plan_slug:
         return []
 
 
-async def load_seanprashad(client: httpx.AsyncClient) -> list[dict]:
-    url = "https://raw.githubusercontent.com/seanprashad/leetcode-patterns/master/src/data/data.json"
-    try:
-        resp = await client.get(url, timeout=20)
-        data = resp.json()
-        items = data if isinstance(data, list) else data.get("data", [])
-        out = []
-        for i, p in enumerate(items):
-            slug = (p.get("url") or "").rstrip("/").split("/")[-1]
-            out.append({"sheet_id": "seanprashad_patterns", "slug": slug, "platform": "leetcode",
-                        "position": i+1, "topic_hint": p.get("pattern","")})
-        return out
-    except Exception:
-        return []
-
-
-async def load_cses(client: httpx.AsyncClient) -> list[dict]:
-    url = "https://raw.githubusercontent.com/cpinitiative/usaco-guide/main/content/5_Competitive/Cses.mdx"
-    try:
-        resp = await client.get(url, timeout=20)
-        # CSES problems from USACO Guide MDX
-        lines = resp.text.split("\n")
-        out = []
-        for i, line in enumerate(lines):
-            if "cses.fi/problemset/problem" in line:
-                import re
-                m = re.search(r'(\d+)', line)
-                if m:
-                    pid = m.group(1)
-                    out.append({"sheet_id": "cses", "slug": f"cses-{pid}", "platform": "codeforces",
-                                "position": i+1, "topic_hint": ""})
-        return out
-    except Exception:
-        return []
-
-
 async def load_all_sheets(client: httpx.AsyncClient) -> list[list[dict]]:
-    tasks = [
-        load_striver_a2z(client),
-        load_neetcode(client, "neetcode_150",
-            "https://raw.githubusercontent.com/neetcode-gh/leetcode/main/neetcode150.json"),
-        load_neetcode(client, "neetcode_250",
-            "https://raw.githubusercontent.com/neetcode-gh/leetcode/main/neetcode250.json"),
-        load_neetcode(client, "neetcode_all",
-            "https://raw.githubusercontent.com/neetcode-gh/leetcode/main/neetcodeAll.json"),
-        load_blind75(client),
-        load_grind(client, "grind_75", 75),
-        load_grind(client, "grind_169", 169),
-        load_lc_studyplan(client, "lc_top_interview_150", "top-interview-150"),
-        load_lc_studyplan(client, "lc_top_100_liked", "top-100-liked"),
-        load_seanprashad(client),
-        load_cses(client),
+    """Return a flat list of per-sheet batches from the live sources only.
+
+    NeetCode master yields three batches in one fetch; the rest are single batches.
+    """
+    batches: list[list[dict]] = []
+
+    # NeetCode master → neetcode_all / neetcode_150 / blind75 (one fetch, three feeds).
+    try:
+        batches.extend(await load_neetcode_master(client))
+    except Exception as e:
+        print(f"[sheets] neetcode_master load error: {e!r}")
+
+    singles = [
+        ("seanprashad_patterns", load_seanprashad(client)),
+        ("lc_top_interview_150", load_lc_studyplan(client, "lc_top_interview_150", "top-interview-150")),
+        ("lc_top_100_liked", load_lc_studyplan(client, "lc_top_100_liked", "top-100-liked")),
     ]
-    return await asyncio.gather(*tasks, return_exceptions=True)
+    results = await asyncio.gather(*(c for _, c in singles), return_exceptions=True)
+    for (name, _), res in zip(singles, results):
+        if isinstance(res, Exception):
+            print(f"[sheets] {name} load error: {res!r}")
+        elif res:
+            batches.append(res)
+
+    return batches
 
 
 # ─── Scoring & selection ──────────────────────────────────────────────────────
@@ -410,8 +378,8 @@ async def main():
             INSERT INTO curated_sheet (id, name, description, generated_at, generator_version)
             VALUES ('optimal_mix_v1', 'AlgoSweeped Optimal Mix',
                     'Cross-sheet frequency + topic coverage + difficulty balance scoring',
-                    now(), '1.0')
-            ON CONFLICT (id) DO UPDATE SET generated_at=now()
+                    now(), '1.1')
+            ON CONFLICT (id) DO UPDATE SET generated_at=now(), generator_version='1.1'
         """)
 
         # Clear old mix rows then re-insert
