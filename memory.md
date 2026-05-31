@@ -129,3 +129,16 @@ Append-only. Each entry records a concrete change to the codebase.
   `llm.explain_topic_gap` param `accuracy→mastery`, prompt + cache-key field renamed.
 - Fix 4: `backend/app/routers/questions.py` busts `roadmap:{uid}` after question-progress commit (not stats/readiness).
 - Tests: 21 backend + 5 frontend green; `./node_modules/.bin/tsc --noEmit` clean. No .env touched.
+
+## 2026-05-31 — Step 8: Questions progress hydration + Dashboard GitHub card
+- New endpoint `GET /questions/progress/me` (`backend/app/routers/questions.py`): auth'd, uncached,
+  returns `{question_id: status}` for the current user. Declared BEFORE `/{question_id}` so the path
+  isn't swallowed as an id.
+- `frontend/src/api/questions.ts`: added `getMyQuestionProgress`.
+- `frontend/src/pages/Questions.tsx`: hydrates progress into local state + passes `progress` and an
+  `onStatusChange` mutation (optimistic + rollback) to each `TopicAccordion`. Fixes the `0/N` display
+  and refresh-loss. (`QuestionRow` skips its own PATCH when `onStatusChange` is set — parent owns the write.)
+- `frontend/src/pages/Dashboard.tsx`: `summarize()` gained a `github` branch (repos/followers/recent_pushes
+  from `snapshots.github`); added third `<PlatformCard platform="github">`; grid `md:grid-cols-3` →
+  `md:grid-cols-2 lg:grid-cols-4`.
+- Tests: 21 backend + 5 frontend green; tsc clean. No .env touched.

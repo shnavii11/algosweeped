@@ -20,6 +20,9 @@ function summarize(platform: string, raw?: Record<string, unknown>): Record<stri
   if (platform === 'codeforces') {
     return { rating: r.rating, max_rating: r.maxRating, rank: r.rank, solved: r.problemsSolved }
   }
+  if (platform === 'github') {
+    return { repos: r.public_repos ?? 0, followers: r.followers ?? 0, recent_pushes: r.recent_push_events ?? 0 }
+  }
   return raw
 }
 
@@ -81,10 +84,11 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <ReadinessScore score={readiness?.total ?? 0} />
         <PlatformCard platform="leetcode" data={summarize('leetcode', data?.snapshots?.leetcode?.data)} />
         <PlatformCard platform="codeforces" data={summarize('codeforces', data?.snapshots?.codeforces?.data)} />
+        <PlatformCard platform="github" data={summarize('github', data?.snapshots?.github?.data)} />
       </div>
 
       {summary?.summary && (

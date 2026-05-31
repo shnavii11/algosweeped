@@ -22,3 +22,8 @@ export const getQuestion = (id: string) =>
 
 export const updateQuestionProgress = (id: string, status: QuestionProgress['status']) =>
   client.patch<QuestionProgress>(`/questions/${id}/progress`, { status }).then((r) => r.data)
+
+export const getMyQuestionProgress = () =>
+  client
+    .get<Record<string, QuestionProgress['status']>>('/questions/progress/me')
+    .then((r) => r.data)

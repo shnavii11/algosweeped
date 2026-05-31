@@ -38,6 +38,13 @@ Snapshot as of 2026-05-30. Source of truth for what's left; see `step6.md` for f
 - [ ] Browser-confirm the Insights fix renders in the actual Dashboard UI (API already verified PASS).
 - [ ] Once Gemini quota/key is set, exercise the 3 `/insights/*` endpoints against the real provider.
 
+## 🟣 Functional gaps (DONE — Step 8, 2026-05-31)
+- [x] **Questions-page progress wiring** — added `GET /questions/progress/me`; `Questions.tsx`
+  hydrates the map + passes `progress`/`onStatusChange` so per-topic done-counts are real and persist
+  across refresh (no more `0/N`).
+- [x] **Dashboard GitHub card** — `Dashboard.tsx` `summarize()` github branch + third `PlatformCard`
+  (GitHub is 25% of readiness but had no visible source); grid widened to 4 cards.
+
 ## 🔵 Backlog (larger, recorded only)
 - [ ] **Deployment** — Vercel (frontend) + Railway (backend) + Supabase (DB).
 - [x] **Thicken curated sheet** 250 → **406** problems (Step 7 Part 2, 2026-05-30). 6 of 16 sources now

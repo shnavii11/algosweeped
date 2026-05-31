@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getQuestionsByTopic } from '../api/questions'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { getQuestionsByTopic, getMyQuestionProgress, updateQuestionProgress } from '../api/questions'
 import TopicAccordion from '../components/questions/TopicAccordion'
 import QuestionFilterBar from '../components/questions/QuestionFilterBar'
 import RoadmapNav from '../components/questions/RoadmapNav'
-import type { Question } from '../types'
+import type { Question, QuestionProgress } from '../types'
 
 const TOPIC_ORDER = [
   'arrays','strings','hashing','two-pointers','sliding-window','prefix-sum',
@@ -36,6 +36,33 @@ export default function Questions() {
     queryFn: getQuestionsByTopic,
     staleTime: 12 * 60 * 60 * 1000,
   })
+
+  // Hydrate the user's saved progress so accordion done-counts are real and
+  // survive refresh. Held in local state so marks update optimistically without
+  // a refetch round-trip.
+  type Status = QuestionProgress['status']
+  const [progress, setProgress] = useState<Record<string, Status>>({})
+  useQuery({
+    queryKey: ['question-progress'],
+    queryFn: async () => {
+      const map = await getMyQuestionProgress()
+      setProgress(map)
+      return map
+    },
+  })
+
+  const progressMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: Status }) => updateQuestionProgress(id, status),
+  })
+
+  const handleStatusChange = (id: string, status: Status) => {
+    const prev = progress[id]
+    setProgress((m) => ({ ...m, [id]: status }))
+    progressMutation.mutate(
+      { id, status },
+      { onError: () => setProgress((m) => ({ ...m, [id]: prev })) },
+    )
+  }
 
   const [filters, setFilters] = useState<Filters>({
     q: '', difficulty: '', platform: '', topic: searchParams.get('topic') || '',
@@ -86,6 +113,8 @@ export default function Questions() {
                   topic={topic}
                   displayName={DISPLAY_NAMES[topic] || topic}
                   questions={questions}
+                  progress={progress}
+                  onStatusChange={handleStatusChange}
                   defaultOpen={activeTopic === topic}
                 />
               </div>

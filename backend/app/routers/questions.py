@@ -114,6 +114,21 @@ async def questions_by_topic(db: AsyncSession = Depends(get_db)):
     return {"success": True, "data": grouped, "meta": {"cached": False}}
 
 
+@router.get("/progress/me")
+async def my_question_progress(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk progress map for the current user so the Questions page can hydrate
+    per-topic done counts on load (and survive refresh). Small + user-scoped +
+    must be fresh after a PATCH, so it's intentionally uncached."""
+    result = await db.execute(
+        select(QuestionProgress).where(QuestionProgress.user_id == current_user.id)
+    )
+    progress = {p.question_id: p.status for p in result.scalars()}
+    return {"success": True, "data": progress}
+
+
 @router.get("/{question_id}")
 async def get_question(question_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Question).where(Question.id == question_id))

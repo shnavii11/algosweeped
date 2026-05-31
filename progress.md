@@ -217,3 +217,26 @@ Coded the four deferred fixes from `step6.md`/`step7.md`. All tests green (21 ba
    doesn't feed them), so the Roadmap page's `user_solved` updates now.
 
 **Next:** Part 2 (curated-sheet thickening 250→350–450), Part 3 (E2E browser walk), Part 4 (cleanup).
+
+## Step 8 — Fix functional gaps: Questions progress + Dashboard GitHub card (2026-05-31)
+Two finished features looked unfinished because their wiring was only half-built. All tests green
+(21 backend, 5 frontend, tsc clean). No `.env`/config touched.
+
+1. **Questions-page progress hydration.** The Questions page showed `0/N` on every topic because
+   `Questions.tsx` never loaded the user's saved `question_progress` — `QuestionRow` already PATCHed
+   on click and `TopicAccordion` already computed `done/total` from a `progress` prop, but nothing
+   hydrated that map (so marks also vanished on refresh). Added **`GET /questions/progress/me`**
+   (auth'd, uncached, placed *before* `/{question_id}` so it isn't captured as an id) returning
+   `{question_id: status}`. `Questions.tsx` now fetches it into local state and passes `progress` +
+   an `onStatusChange` mutation (parent owns persistence via `updateQuestionProgress`, with
+   optimistic update + rollback) to each accordion → live, persisted done-counts. Added
+   `getMyQuestionProgress` to `api/questions.ts`. No change to `TopicAccordion`/`QuestionRow`.
+2. **Dashboard GitHub card.** GitHub is 25% of readiness but had no card. `/stats/me` already returns
+   `snapshots.github`; added a `github` branch to `Dashboard.tsx`'s `summarize()` (repos / followers /
+   recent_pushes from the gh snapshot) and a third `<PlatformCard platform="github">`. Widened the
+   grid `md:grid-cols-3` → `md:grid-cols-2 lg:grid-cols-4` for 4 cards. Degrades to "Not connected"
+   when no gh snapshot exists.
+
+**Verified:** `GET /questions/progress/me` returns 403 unauth'd (route resolves, not 404). Backend
+restarted on :8000 to pick up the route.
+**Next:** Part 3 (E2E browser walk), Part 4 (cleanup), deployment.
