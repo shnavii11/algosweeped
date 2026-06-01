@@ -1,6 +1,7 @@
 import { Outlet, NavLink } from 'react-router-dom'
 import { LayoutDashboard, Code2, Map, BookOpen, User } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import OverallProgress from './OverallProgress'
 import clsx from 'clsx'
 
 const navItems = [
@@ -42,6 +43,9 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
+        <div className="p-4 border-t border-gray-800">
+          <OverallProgress />
+        </div>
         <div className="p-4 border-t border-gray-800">
           <button
             onClick={logout}

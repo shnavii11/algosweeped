@@ -37,7 +37,13 @@ export default function Sheet() {
   const mutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: QuestionProgress['status'] }) =>
       updateSheetProgress(id, status),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sheet-progress'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sheet-progress'] })
+      // Step-7 Fix 2 busts the stats:/readiness: Redis keys on a sheet write; refetch them
+      // so the sidebar OverallProgress bar reflects the new sheet completion.
+      queryClient.invalidateQueries({ queryKey: ['readiness'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+    },
   })
 
   const handleStatusChange = (id: string, status: QuestionProgress['status']) => {
