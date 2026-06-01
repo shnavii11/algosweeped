@@ -40,3 +40,17 @@ left sidebar, visible on every page, blending platform problem-solving with cura
   problems done.
 - **Tests:** new `OverallProgress.test.ts` (2 vitest, pure helper) → frontend 7 passing; `tsc --noEmit`
   clean; backend still 21 passing (unaffected).
+
+### Step 9 follow-up — sidebar bottom block was off-screen (layout fix)
+**Symptom:** after mounting `<OverallProgress />` between the nav and the Sign-out footer, neither the
+new bar NOR the pre-existing "Sign out" button was visible — both sat below the fold.
+**Root cause:** `Layout.tsx` root was `flex min-h-screen` while `<main>` had `overflow-auto`. With
+`min-h-screen` the container grows to content height, so `main`'s `overflow-auto` never engages and the
+whole page scrolls — pushing the sidebar's bottom blocks off-screen. Pre-existing latent bug; Step 9 just
+made it visible by adding content there.
+**Fix:** one line — `min-h-screen` → `h-screen`. Now `main` scrolls internally and the sidebar (with the
+Overall Progress bar + Sign out) is pinned in the viewport on every page.
+**Verified via headless-Chromium DOM read** (CDP, authed as shnavii11): `rootClass="flex h-screen"`,
+sidebar renders `Overall Progress 26%` · `LC 213 · CF 6 · Sheet 0/406` · `Sign out`. The user's earlier
+"no change" was a stale Safari module cache, not a code issue (server served the correct bundle, `no-cache`
+headers). `tsc --noEmit` clean.

@@ -17,7 +17,7 @@ export default function Layout() {
   const logout = useAuthStore((s) => s.logout)
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen">
       {/* Sidebar */}
       <aside className="w-56 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col">
         <div className="p-4 border-b border-gray-800">

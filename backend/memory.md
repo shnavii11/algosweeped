@@ -20,3 +20,9 @@
 - Mounted in `Layout.tsx` between nav and Sign-out footer. `Sheet.tsx` mutation now also invalidates
   `['readiness']`+`['stats']` so the bar refreshes after marking sheet problems done.
 - New `OverallProgress.test.ts` (pure helper). FE 7 tests pass, tsc clean, BE 21 still pass. No backend change.
+- Follow-up fix: `Layout.tsx` root `min-h-screen`→`h-screen` (one line). Latent bug — with `min-h-screen`
+  the container grew to content height so `<main>`'s `overflow-auto` never engaged; the whole page scrolled
+  and the sidebar's bottom blocks (Overall Progress bar + Sign out) fell off-screen. `h-screen` makes `main`
+  scroll internally and pins the sidebar. Verified via headless-Chromium CDP DOM read (authed): sidebar shows
+  `Overall Progress 26% · LC 213 · CF 6 · Sheet 0/406 · Sign out`. The "no change" the user saw was a stale
+  Safari module cache, not code (server served correct bundle w/ `no-cache`).
