@@ -1,7 +1,9 @@
 import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
 
-const client = axios.create({ baseURL: '/api' })
+// In prod set VITE_API_URL to the backend origin (e.g. https://algosweeped.onrender.com).
+// In dev it falls back to '/api', which Vite proxies to http://localhost:8000.
+const client = axios.create({ baseURL: import.meta.env.VITE_API_URL ?? '/api' })
 
 client.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token

@@ -1,0 +1,44 @@
+# Render blueprint for the AlgoSweeped FastAPI backend.
+# In Render: New → Blueprint → connect this repo. Then set the secret env vars
+# (marked sync: false) in the dashboard. Frontend deploys separately on Vercel.
+services:
+  - type: web
+    name: algosweeped-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # ── Non-secret defaults ──
+      - key: JWT_EXPIRE_MINUTES
+        value: "10080"
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: FETCH_CF_STATEMENTS
+        value: "false"
+      # ── Secrets: set these in the Render dashboard ──
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # Set to your Vercel frontend origin after the frontend deploys.
+      - key: FRONTEND_URL
+        sync: false
