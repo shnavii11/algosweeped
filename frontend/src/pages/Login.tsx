@@ -21,7 +21,9 @@ export default function Login() {
   }, [token, navigate])
 
   const handleGithubLogin = () => {
-    window.location.href = '/api/auth/github'
+    // In prod VITE_API_URL is the backend origin; in dev the vite proxy maps /api → :8000.
+    const base = import.meta.env.VITE_API_URL ?? '/api'
+    window.location.href = `${base}/auth/github`
   }
 
   return (
